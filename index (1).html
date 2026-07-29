@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JLDA Perfumaria — Controle de Pedidos</title>
+<style>
+  html, body{ margin:0; padding:0; }
+  :root{
+    --ink:#231822;
+    --plum:#3B2436;
+    --plum-2:#4E2F44;
+    --cream:#F7F1E8;
+    --gold:#C6A15B;
+    --gold-soft:#E4D3AC;
+    --rose:#C0776A;
+    --sage:#7C8A6E;
+    --line: rgba(255,255,255,0.10);
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Manrope', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  #jlda-app{
+    font-family:var(--font-body);
+    background: radial-gradient(1200px 600px at 10% -10%, #4a2c40 0%, var(--plum) 45%, var(--ink) 100%);
+    color: var(--cream);
+    min-height:100%;
+    padding: 28px 20px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+  .wrap{max-width:980px;margin:0 auto;}
+
+  .top{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:16px;
+    border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:24px;
+    flex-wrap:wrap;
+  }
+  .brand-eyebrow{
+    font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--gold-soft); opacity:.85;
+  }
+  .brand h1{
+    font-family:var(--font-display); font-weight:600; font-size:42px; margin:2px 0 0;
+    letter-spacing:.01em; color:var(--cream);
+  }
+  .brand h1 em{ font-style:italic; color:var(--gold); }
+  .top-meta{ text-align:right; font-size:13px; color:var(--gold-soft); opacity:.9; }
+  .top-meta .num{ font-family:var(--font-display); font-size:28px; color:var(--cream); display:block; line-height:1;}
+
+  .stats{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:18px;
+  }
+  @media (max-width:900px){ .stats{grid-template-columns:repeat(3,1fr);} }
+  @media (max-width:560px){ .stats{grid-template-columns:repeat(2,1fr);} }
+  .stat{
+    background:linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border:1px solid var(--line); border-radius:14px; padding:14px 16px; cursor:pointer;
+    transition:transform .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .stat:hover{ transform:translateY(-2px); border-color:rgba(198,161,91,0.5); }
+  .stat.active{ border-color:var(--gold); background:linear-gradient(160deg, rgba(198,161,91,0.14), rgba(198,161,91,0.03)); }
+  .stat .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--gold-soft); opacity:.85;}
+  .stat .value{ font-family:var(--font-display); font-size:30px; margin-top:4px; color:var(--cream); }
+  .stat .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:7px; }
+
+  .controls{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; align-items:center; }
+  input[type=text], select, textarea{
+    background:rgba(255,255,255,0.06); border:1px solid var(--line); color:var(--cream);
+    border-radius:10px; padding:10px 12px; font-family:var(--font-body); font-size:14px; outline:none;
+  }
+  input[type=text]:focus, select:focus, textarea:focus{ border-color:var(--gold); }
+  #search{ flex:1; min-width:180px; }
+  .btn{
+    background:var(--gold); color:var(--ink); border:none; border-radius:10px; padding:10px 18px;
+    font-weight:700; font-size:14px; cursor:pointer; font-family:var(--font-body);
+    transition:filter .15s ease, transform .15s ease;
+  }
+  .btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  .btn.ghost{ background:transparent; border:1px solid var(--gold); color:var(--gold-soft); }
+  .btn.small{ padding:6px 12px; font-size:12.5px; }
+  .btn.danger{ background:transparent; border:1px solid var(--rose); color:var(--rose); }
+
+  .list{ display:flex; flex-direction:column; gap:10px; }
+  .order{
+    background:linear-gradient(160deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+    border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+    display:grid; grid-template-columns: 1.1fr 1.6fr .5fr auto; gap:14px; align-items:center;
+  }
+  @media (max-width:820px){ .order{ grid-template-columns:1fr; } }
+  .order .cliente{ font-family:var(--font-display); font-size:20px; color:var(--cream); }
+  .order .perfumes{ font-size:14px; color:var(--gold-soft); line-height:1.4; }
+  .order .meta-row{ font-size:12px; color:rgba(247,241,232,0.55); margin-top:3px; }
+  .badge-tam{
+    display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px; border:1px solid var(--line);
+    color:var(--cream); opacity:.8; margin-right:6px;
+  }
+  .obs{ font-size:12px; color:var(--rose); margin-top:4px; font-style:italic; }
+  .status-badge{
+    font-size:11.5px; padding:6px 12px; border-radius:20px; font-weight:700; letter-spacing:.03em;
+    text-align:center; white-space:nowrap; text-transform:uppercase;
+  }
+  .status-pendente{ background:rgba(192,119,106,0.18); color:#E4A79B; border:1px solid rgba(192,119,106,0.5); }
+  .status-pago{ background:rgba(198,161,91,0.18); color:var(--gold-soft); border:1px solid rgba(198,161,91,0.5); }
+  .status-entregue{ background:rgba(124,138,110,0.22); color:#B7C7A5; border:1px solid rgba(124,138,110,0.6); }
+  .status-receber{ background:rgba(214,140,60,0.20); color:#E9B679; border:1px solid rgba(214,140,60,0.6); }
+  .valor-line{ font-size:12.5px; color:var(--gold-soft); opacity:.9; margin-top:5px; }
+  .valor-line .receber{ color:#E9B679; font-weight:700; }
+  .money-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:22px; }
+  @media (max-width:720px){ .money-stats{ grid-template-columns:1fr; } }
+  .money-card{
+    background:linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border:1px solid var(--line); border-radius:14px; padding:14px 16px;
+  }
+  .money-card .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--gold-soft); opacity:.85;}
+  .money-card .value{ font-family:var(--font-display); font-size:26px; margin-top:4px; }
+  .money-card.highlight{ border-color:rgba(214,140,60,0.6); background:linear-gradient(160deg, rgba(214,140,60,0.14), rgba(214,140,60,0.02)); }
+  .money-card.highlight .value{ color:#E9B679; }
+  .row-actions{ display:flex; gap:6px; justify-content:flex-end; }
+
+  .empty{ text-align:center; padding:50px 20px; color:var(--gold-soft); opacity:.8; font-family:var(--font-display); font-size:20px;}
+
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(10,6,10,0.6); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal{
+    background:linear-gradient(160deg, #4E2F44, #2c1b28); border:1px solid var(--gold); border-radius:16px;
+    padding:26px; width:100%; max-width:440px; max-height:90vh; overflow:auto;
+  }
+  .modal h3{ font-family:var(--font-display); font-size:26px; margin:0 0 16px; color:var(--gold-soft); }
+  .field{ margin-bottom:12px; display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--gold-soft); opacity:.85; }
+  .field input, .field select, .field textarea{ width:100%; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+
+  .footer-note{ text-align:center; margin-top:30px; font-size:12px; color:rgba(247,241,232,0.4); }
+  ::placeholder{ color: rgba(247,241,232,0.35); }
+</style>
+</head>
+<body>
+
+<div id="jlda-app">
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="brand-eyebrow">Controle de pedidos</div>
+        <h1>JLDA <em>Perfumaria</em></h1>
+      </div>
+      <div class="top-meta">
+        <span class="num" id="total-count">0</span>
+        pedidos registrados
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+    <div class="money-stats" id="money-stats"></div>
+
+    <div class="controls">
+      <input type="text" id="search" placeholder="Buscar por cliente ou perfume...">
+      <select id="filter-tamanho">
+        <option value="todos">Todos os tamanhos</option>
+        <option value="30ml">30ml</option>
+        <option value="50ml">50ml</option>
+      </select>
+      <button class="btn" id="btn-add">+ Novo pedido</button>
+    </div>
+
+    <div class="list" id="list"></div>
+    <div class="empty" id="empty" style="display:none;">Nenhum pedido encontrado.</div>
+
+    <div class="footer-note">
+      Toque em um cartão para editar o status ou os dados do pedido.<br>
+      <button class="btn ghost small" id="btn-export" style="margin-top:10px;">Exportar backup</button>
+      <label class="btn ghost small" style="margin-top:10px; cursor:pointer;">
+        Importar backup
+        <input type="file" id="file-import" accept="application/json" style="display:none;">
+      </label>
+    </div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'jlda_orders_v1';
+  let orders = [];
+  let activeFilter = 'todos';
+  let activeTamanho = 'todos';
+  let searchTerm = '';
+
+  const PRECO_30 = 80;
+  const PRECO_50 = 130;
+
+  const seed = [
+    {cliente:"Edson", perfumes:"Legacy D", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"João", perfumes:"Yohanan", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"Aline", perfumes:"Hannah", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"Saymon", perfumes:"Legacy D", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"Dayene Saymon", perfumes:"Toh", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"Elias", perfumes:"Legacy D", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"Dilma Betim", perfumes:"Hannah, Yohanan, Toh, Legacy D", tamanho:"30ml", quantidade:4, status:"entregue"},
+    {cliente:"Rafael", perfumes:"Yohanan", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"Jheny", perfumes:"Legacy D, Vanilla Night", tamanho:"30ml", quantidade:2, status:"entregue"},
+    {cliente:"Jana", perfumes:"Toh, Is Black", tamanho:"30ml", quantidade:2, status:"entregue"},
+    {cliente:"Guilherme T.I", perfumes:"Royal Night", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"Fred", perfumes:"Legacy D", tamanho:"30ml", quantidade:1, status:"entregue_receber"},
+    {cliente:"Raimundo", perfumes:"Yohanan", tamanho:"30ml", quantidade:1, status:"entregue_receber"},
+    {cliente:"Renato", perfumes:"Legacy D", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"Dilma", perfumes:"Ferrari Black (3), Classic Man (3), Yohanan (3), Royal Night (3), Libre (2)", tamanho:"30ml", quantidade:14, status:"pendente"},
+    {cliente:"Aline", perfumes:"Azzaro", tamanho:"30ml", quantidade:1, status:"pago"},
+    {cliente:"João (esposa)", perfumes:"212 Vip Rose", tamanho:"30ml", quantidade:1, status:"pago"},
+    {cliente:"Cristiano", perfumes:"Legacy D, Yohanan", tamanho:"30ml", quantidade:2, status:"entregue_receber"},
+    {cliente:"Gleice B.O", perfumes:"Toh", tamanho:"30ml", quantidade:1, status:"entregue_receber"},
+    {cliente:"Eliane B.O", perfumes:"Hannah (2)", tamanho:"30ml", quantidade:2, status:"entregue_receber"},
+    {cliente:"Vanderlei", perfumes:"Toh", tamanho:"30ml", quantidade:1, status:"entregue_receber"},
+    {cliente:"Carol B.O", perfumes:"Toh", tamanho:"30ml", quantidade:1, status:"entregue_receber", obs:"Pago 50% de entrada", valorRecebidoOverride:40},
+    {cliente:"Rodrigo", perfumes:"Yohanan", tamanho:"30ml", quantidade:1, status:"entregue"},
+    {cliente:"Guilherme T.I", perfumes:"Blue Chanel", tamanho:"30ml", quantidade:1, status:"pendente"},
+    {cliente:"Rafael T.I", perfumes:"Blue Chanel, Libre", tamanho:"30ml", quantidade:2, status:"pago"},
+    {cliente:"Viviane Felício", perfumes:"Libre", tamanho:"30ml", quantidade:1, status:"pendente"},
+    {cliente:"Roger Mater", perfumes:"Classic Man", tamanho:"30ml", quantidade:1, status:"pendente"},
+    {cliente:"Rodrigo", perfumes:"Sky Bleu", tamanho:"30ml", quantidade:1, status:"pendente"},
+    {cliente:"Juliano", perfumes:"Prada Paradoxe", tamanho:"30ml", quantidade:1, status:"pendente"},
+    {cliente:"Lidiane", perfumes:"Herbário (2)", tamanho:"30ml", quantidade:2, status:"pendente"},
+    {cliente:"Cristiane", perfumes:"Toh", tamanho:"50ml", quantidade:1, status:"entregue"},
+    {cliente:"Adriana", perfumes:"Hannah", tamanho:"50ml", quantidade:1, status:"entregue"},
+    {cliente:"Katia Edson", perfumes:"Vanilla Night", tamanho:"50ml", quantidade:1, status:"entregue"},
+    {cliente:"Maikon", perfumes:"Is Black", tamanho:"50ml", quantidade:1, status:"entregue"},
+    {cliente:"Eduarda Aline", perfumes:"Vanilla Night", tamanho:"50ml", quantidade:1, status:"entregue"},
+    {cliente:"Saymon", perfumes:"Wolf Boy", tamanho:"50ml", quantidade:1, status:"pendente", obs:"Pago 50% de entrada", valorRecebidoOverride:65},
+    {cliente:"Viviane Felício", perfumes:"Classic Man", tamanho:"50ml", quantidade:1, status:"pendente"},
+    {cliente:"Luan T.I", perfumes:"Yohanan", tamanho:"50ml", quantidade:1, status:"entregue"},
+    {cliente:"Vô de Saymon", perfumes:"Blue Chanel", tamanho:"50ml", quantidade:1, status:"pendente"},
+    {cliente:"Juliano", perfumes:"Legacy D, Toh", tamanho:"50ml", quantidade:2, status:"pendente"},
+    {cliente:"Rodrigo", perfumes:"Legacy D, Scuderia, Wolf Boy", tamanho:"50ml", quantidade:3, status:"pendente"},
+    {cliente:"Lidiane", perfumes:"Toh, Paradoxe", tamanho:"50ml", quantidade:2, status:"pendente"}
+  ].map(o => {
+    const unit = o.tamanho === '30ml' ? PRECO_30 : PRECO_50;
+    const total = unit * o.quantidade;
+    let recebido;
+    if(o.valorRecebidoOverride !== undefined){ recebido = o.valorRecebidoOverride; }
+    else if(o.status === 'entregue' || o.status === 'pago'){ recebido = total; }
+    else { recebido = 0; }
+    return { ...o, valorUnitario: unit, valorRecebido: recebido };
+  });
+
+  function uid(){ return 'o_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  async function loadOrders(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        orders = JSON.parse(raw);
+        return;
+      }
+    }catch(e){ /* nada salvo ainda */ }
+    // seed na primeira vez que abrir
+    orders = seed.map(o => ({ id: uid(), obs:"", ...o }));
+    await saveOrders();
+  }
+
+  async function saveOrders(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+    }catch(e){
+      console.error('Erro ao salvar pedidos', e);
+    }
+  }
+
+  function statusLabel(s){
+    if(s === 'pendente') return 'A entregar';
+    if(s === 'pago') return 'Pago';
+    if(s === 'entregue_receber') return 'Entregue - a receber';
+    if(s === 'entregue') return 'Pago e entregue';
+    return s;
+  }
+  function statusClass(s){
+    if(s === 'pendente') return 'status-pendente';
+    if(s === 'pago') return 'status-pago';
+    if(s === 'entregue_receber') return 'status-receber';
+    return 'status-entregue';
+  }
+  function fmtBRL(v){
+    return 'R$ ' + (Math.round(v*100)/100).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function valorTotal(o){ return (o.valorUnitario||0) * (o.quantidade||0); }
+  function valorAReceber(o){ return Math.max(0, valorTotal(o) - (o.valorRecebido||0)); }
+
+  function computeStats(){
+    const counts = { todos: orders.length, pendente:0, pago:0, entregue:0, entregue_receber:0 };
+    orders.forEach(o => counts[o.status] = (counts[o.status]||0)+1);
+    return counts;
+  }
+
+  function renderStats(){
+    const c = computeStats();
+    const el = document.getElementById('stats');
+    const defs = [
+      {key:'todos', label:'Todos', value:c.todos, dot:'#C6A15B'},
+      {key:'pendente', label:'A entregar', value:c.pendente||0, dot:'#C0776A'},
+      {key:'pago', label:'Pagos (a entregar)', value:c.pago||0, dot:'#C6A15B'},
+      {key:'entregue_receber', label:'Entregues (a receber)', value:c.entregue_receber||0, dot:'#D68C3C'},
+      {key:'entregue', label:'Pagos e entregues', value:c.entregue||0, dot:'#7C8A6E'},
+    ];
+    el.innerHTML = defs.map(d => `
+      <div class="stat ${activeFilter===d.key?'active':''}" data-filter="${d.key}">
+        <div class="label"><span class="dot" style="background:${d.dot}"></span>${d.label}</div>
+        <div class="value">${d.value}</div>
+      </div>
+    `).join('');
+    el.querySelectorAll('.stat').forEach(elm => {
+      elm.addEventListener('click', () => {
+        activeFilter = elm.getAttribute('data-filter');
+        render();
+      });
+    });
+    document.getElementById('total-count').textContent = c.todos;
+  }
+
+  function renderMoneyStats(){
+    const el = document.getElementById('money-stats');
+    let total = 0, recebido = 0;
+    orders.forEach(o => { total += valorTotal(o); recebido += (o.valorRecebido||0); });
+    const aReceber = total - recebido;
+    el.innerHTML = `
+      <div class="money-card">
+        <div class="label">Total em vendas</div>
+        <div class="value">${fmtBRL(total)}</div>
+      </div>
+      <div class="money-card">
+        <div class="label">Já recebido</div>
+        <div class="value">${fmtBRL(recebido)}</div>
+      </div>
+      <div class="money-card highlight">
+        <div class="label">Falta receber</div>
+        <div class="value">${fmtBRL(aReceber)}</div>
+      </div>
+    `;
+  }
+
+  function matches(o){
+    if(activeFilter !== 'todos' && o.status !== activeFilter) return false;
+    if(activeTamanho !== 'todos' && o.tamanho !== activeTamanho) return false;
+    if(searchTerm){
+      const t = searchTerm.toLowerCase();
+      if(!o.cliente.toLowerCase().includes(t) && !o.perfumes.toLowerCase().includes(t)) return false;
+    }
+    return true;
+  }
+
+  function renderList(){
+    const list = document.getElementById('list');
+    const empty = document.getElementById('empty');
+    const filtered = orders.filter(matches);
+    if(filtered.length === 0){
+      list.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    list.innerHTML = filtered.map(o => {
+      const total = valorTotal(o);
+      const receber = valorAReceber(o);
+      return `
+      <div class="order" data-id="${o.id}">
+        <div>
+          <div class="cliente">${escapeHtml(o.cliente)}</div>
+          <div class="meta-row"><span class="badge-tam">${o.tamanho}</span>Qtd: ${o.quantidade}</div>
+        </div>
+        <div>
+          <div class="perfumes">${escapeHtml(o.perfumes)}</div>
+          ${o.obs ? `<div class="obs">${escapeHtml(o.obs)}</div>` : ''}
+          <div class="valor-line">${fmtBRL(total)}${receber > 0 ? ` &middot; <span class="receber">${fmtBRL(receber)} a receber</span>` : ''}</div>
+        </div>
+        <div><span class="status-badge ${statusClass(o.status)}">${statusLabel(o.status)}</span></div>
+        <div class="row-actions">
+          <button class="btn ghost small" data-action="edit">Editar</button>
+          <button class="btn danger small" data-action="del">Excluir</button>
+        </div>
+      </div>
+    `;
+    }).join('');
+
+    list.querySelectorAll('.order').forEach(card => {
+      const id = card.getAttribute('data-id');
+      card.querySelector('[data-action="edit"]').addEventListener('click', () => openModal(id));
+      card.querySelector('[data-action="del"]').addEventListener('click', () => deleteOrder(id));
+    });
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function render(){
+    renderStats();
+    renderMoneyStats();
+    renderList();
+  }
+
+  async function deleteOrder(id){
+    if(!confirm('Excluir este pedido?')) return;
+    orders = orders.filter(o => o.id !== id);
+    await saveOrders();
+    render();
+  }
+
+  function openModal(id){
+    const isNew = !id;
+    const o = isNew ? { id: uid(), cliente:'', perfumes:'', tamanho:'30ml', quantidade:1, status:'pendente', obs:'', valorUnitario: PRECO_30, valorRecebido:0 } : orders.find(x => x.id === id);
+    const root = document.getElementById('modal-root');
+    root.innerHTML = `
+      <div class="modal-bg" id="modal-bg">
+        <div class="modal">
+          <h3>${isNew ? 'Novo pedido' : 'Editar pedido'}</h3>
+          <div class="field">
+            <label>Cliente</label>
+            <input type="text" id="f-cliente" value="${escapeHtml(o.cliente)}" placeholder="Nome do cliente">
+          </div>
+          <div class="field">
+            <label>Perfume(s)</label>
+            <textarea id="f-perfumes" rows="2" placeholder="Ex: Legacy D, Yohanan">${escapeHtml(o.perfumes)}</textarea>
+          </div>
+          <div class="field">
+            <label>Tamanho</label>
+            <select id="f-tamanho">
+              <option value="30ml" ${o.tamanho==='30ml'?'selected':''}>30ml (R$ ${PRECO_30})</option>
+              <option value="50ml" ${o.tamanho==='50ml'?'selected':''}>50ml (R$ ${PRECO_50})</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Quantidade (unidades)</label>
+            <input type="text" inputmode="numeric" id="f-qtd" value="${o.quantidade}">
+          </div>
+          <div class="field">
+            <label>Valor unitário (R$)</label>
+            <input type="text" inputmode="decimal" id="f-valor-unit" value="${o.valorUnitario}">
+          </div>
+          <div class="field">
+            <label>Valor já recebido (R$)</label>
+            <input type="text" inputmode="decimal" id="f-valor-recebido" value="${o.valorRecebido}">
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="f-status">
+              <option value="pendente" ${o.status==='pendente'?'selected':''}>A entregar</option>
+              <option value="pago" ${o.status==='pago'?'selected':''}>Pago (não entregue)</option>
+              <option value="entregue_receber" ${o.status==='entregue_receber'?'selected':''}>Entregue - a receber</option>
+              <option value="entregue" ${o.status==='entregue'?'selected':''}>Pago e entregue</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Observação (opcional)</label>
+            <input type="text" id="f-obs" value="${escapeHtml(o.obs||'')}" placeholder="Ex: Pago 50% de entrada">
+          </div>
+          <div class="modal-actions">
+            <button class="btn ghost" id="btn-cancel">Cancelar</button>
+            <button class="btn" id="btn-save">Salvar</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('f-tamanho').addEventListener('change', (e) => {
+      document.getElementById('f-valor-unit').value = e.target.value === '30ml' ? PRECO_30 : PRECO_50;
+    });
+    document.getElementById('btn-cancel').addEventListener('click', closeModal);
+    document.getElementById('modal-bg').addEventListener('click', (e) => { if(e.target.id === 'modal-bg') closeModal(); });
+    document.getElementById('btn-save').addEventListener('click', async () => {
+      const cliente = document.getElementById('f-cliente').value.trim();
+      if(!cliente){ alert('Informe o nome do cliente.'); return; }
+      const updated = {
+        id: o.id,
+        cliente,
+        perfumes: document.getElementById('f-perfumes').value.trim(),
+        tamanho: document.getElementById('f-tamanho').value,
+        quantidade: parseInt(document.getElementById('f-qtd').value) || 1,
+        valorUnitario: parseFloat(document.getElementById('f-valor-unit').value.replace(',','.')) || 0,
+        valorRecebido: parseFloat(document.getElementById('f-valor-recebido').value.replace(',','.')) || 0,
+        status: document.getElementById('f-status').value,
+        obs: document.getElementById('f-obs').value.trim()
+      };
+      if(isNew){
+        orders.unshift(updated);
+      }else{
+        const idx = orders.findIndex(x => x.id === o.id);
+        orders[idx] = updated;
+      }
+      await saveOrders();
+      closeModal();
+      render();
+    });
+  }
+
+  function closeModal(){
+    document.getElementById('modal-root').innerHTML = '';
+  }
+
+  document.getElementById('btn-add').addEventListener('click', () => openModal(null));
+  document.getElementById('search').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); document.getElementById('total-count').textContent = computeStats().todos; });
+  document.getElementById('filter-tamanho').addEventListener('change', (e) => { activeTamanho = e.target.value; renderList(); });
+
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(orders, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'jlda-pedidos-backup.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('file-import').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const text = await file.text();
+    try{
+      const imported = JSON.parse(text);
+      if(Array.isArray(imported)){
+        orders = imported;
+        await saveOrders();
+        render();
+        alert('Backup importado com sucesso.');
+      }
+    }catch(err){
+      alert('Arquivo inválido.');
+    }
+    e.target.value = '';
+  });
+
+  (async function init(){
+    await loadOrders();
+    render();
+  })();
+})();
+</script>
+</body>
+</html>
